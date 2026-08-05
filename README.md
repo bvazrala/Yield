@@ -5,14 +5,14 @@ Measuring the safety and performance tradeoff in reinforcement learning.
 CS 175: Project in AI, Summer 2026, Group 7.
 
 | Team member | UCI NetID |
-|---|---|
+
 | Bala Kausik Vazrala | bvazrala |
 | Christopher James Cho | cjcho2 |
 | Harrison Nguyen Xuan Hiep Le | harrisnl |
 
 ## Overview
 
-We train DQN agents in the highway-env simulator where the only difference between agents is how heavily the reward penalizes collisions relative to rewarding speed. Five reward configurations, three random seeds each, and a frozen budget of 50,000 training steps per run. The headline result is a tradeoff curve of average speed against collision rate. Full details are in [docs/CS175_Project_Proposal.pdf](docs/CS175_Project_Proposal.pdf).
+We train DQN agents in the highway-env simulator where the only difference between agents is how heavily the reward penalizes collisions relative to rewarding speed. Five reward configurations, three random seeds each, and a frozen budget of 50,000 training steps per run. The headline result is a tradeoff curve of average speed against collision rate. Full details are in [insert google doc link later].
 
 ## Repository structure
 

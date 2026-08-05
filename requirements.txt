@@ -1,0 +1,15 @@
+# Core stack for the highway RL project.
+# After the week 1 install works on all three laptops, freeze exact versions:
+#   pip freeze > requirements.lock.txt
+gymnasium>=0.29
+highway-env>=1.8
+stable-baselines3>=2.3
+torch>=2.2
+tensorboard
+pyyaml
+numpy
+pandas
+matplotlib
+moviepy        # RecordVideo output
+tqdm           # progress_bar=True in SB3 needs tqdm and rich
+rich

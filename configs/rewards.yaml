@@ -1,0 +1,27 @@
+# Reward sweep for the safety and performance study.
+#
+# The sweep changes exactly one thing between configurations: how heavily a
+# collision is penalized. Everything else stays at highway-env defaults so
+# the 'balanced' row anchors us to published results.
+#
+# These starting values are a proposal. Decide the final values in week 1,
+# then FREEZE them for the rest of the project.
+#
+# Week 1 decision to record here once made: whether to set
+# normalize_reward: false so the raw weights act directly on the reward scale.
+
+env_id: highway-fast-v0
+total_steps: 50000       # frozen training budget per run (proposal, section 5)
+eval_episodes: 200       # held-out evaluation episodes per trained agent
+
+configurations:
+  speed_heavy:
+    collision_reward: -0.2
+  speed_lean:
+    collision_reward: -0.5
+  balanced:              # highway-env default
+    collision_reward: -1.0
+  safety_lean:
+    collision_reward: -3.0
+  safety_heavy:
+    collision_reward: -10.0

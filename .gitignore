@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Experiment outputs: keep the folders, ignore the contents
+models/*
+!models/.gitkeep
+logs/*
+!logs/.gitkeep
+videos/*
+!videos/.gitkeep
+
+# results/ stays tracked on purpose: the metrics CSV and plots are small
+# and belong in git.

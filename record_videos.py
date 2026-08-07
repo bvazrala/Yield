@@ -13,7 +13,7 @@ from pathlib import Path
 import gymnasium as gym
 import highway_env 
 from stable_baselines3 import DQN
-from train import load_settings, make_env
+from train import load_settings
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -23,17 +23,6 @@ def main() -> None:
     args = parser.parse_args()
 
     run_name = f"{args.config}_seed{args.seed}"
-
-    # ------------------------------------------------------------------
-    # TODO(team, week 5):
-    # 1. Load the model as in evaluate.py.
-    # 2. Rebuild the env with render_mode="rgb_array", then wrap it:
-    #      env = gymnasium.wrappers.RecordVideo(
-    #          env, video_folder="videos", name_prefix=run_name)
-    # 3. Roll out --episodes episodes with deterministic actions.
-    #
-    # Rendering is for saved policies only. Never render during training.
-    # ------------------------------------------------------------------
     
     settings, rewards = load_settings(args.config)
     base_env = gym.make(settings["env_id"], config=rewards, render_mode="rgb_array")

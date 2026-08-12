@@ -1,18 +1,14 @@
 """Train one DQN agent on highway-fast-v0 with a chosen reward configuration.
 
-Each run is defined by a reward configuration name from configs/rewards.yaml
-and a random seed. The step budget lives in the YAML file and is frozen for
-the whole project. Use --steps only for smoke tests.
-
-Outputs per run:
-    models/<run>.zip                  final trained agent
-    models/<run>.json                 run metadata for reproducibility
-    models/checkpoints/<run>/         periodic checkpoints
-    logs/<run>/                       TensorBoard events and monitor.csv
-
 Usage:
     python train.py --config balanced --seed 0
     python train.py --config safety_heavy --seed 2 --steps 3000
+
+Outputs:
+    models/<run>.zip                final agent
+    models/<run>.json               run metadata
+    models/checkpoints/<run>/       periodic checkpoints
+    logs/<run>/                     TensorBoard events and monitor.csv
 """
 
 import argparse
@@ -21,9 +17,10 @@ import sys
 from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+from typing import Any
 
 import gymnasium
-import highway_env  # noqa: F401  (import registers the highway environments)
+import highway_env  # noqa: F401  (registers the highway environments)
 import yaml
 from stable_baselines3 import DQN
 from stable_baselines3.common.callbacks import CheckpointCallback
@@ -33,10 +30,8 @@ from stable_baselines3.common.utils import set_random_seed
 ROOT = Path(__file__).parent
 CONFIG_FILE = ROOT / "configs" / "rewards.yaml"
 
-# Frozen hyperparameters from the published highway-env DQN example.
-# The reward specification is the only variable in this study, so nothing
-# below this comment changes between runs. Do not tune.
-HYPERPARAMS = dict(
+# Frozen for the whole study. The reward specification is the only variable.
+HYPERPARAMS: dict[str, Any] = dict(
     policy="MlpPolicy",
     learning_rate=5e-4,
     buffer_size=15_000,
@@ -52,35 +47,25 @@ HYPERPARAMS = dict(
 
 
 def load_settings(config_name: str) -> tuple[dict, dict]:
-    """Return (shared settings, environment overrides for the chosen configuration)."""
-    with open(CONFIG_FILE) as f:
+    """Return shared settings and the environment overrides for one configuration."""
+    with open(CONFIG_FILE, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     configurations = data["configurations"]
     if config_name not in configurations:
-        raise SystemExit(
-            f"Unknown config '{config_name}'. Options: {list(configurations)}"
-        )
+        raise SystemExit(f"Unknown config '{config_name}'. Options: {list(configurations)}")
     return data, configurations[config_name]
 
 
-def make_env(settings: dict, overrides: dict, seed: int, monitor_path: Path | None = None):
-    """Build the training environment with this run's reward weights applied.
-
-    configure() must run before the first reset() or the overrides are ignored.
-    Monitor records per-episode reward and length, which SB3 needs for its
-    rollout statistics and which gives the analysis a clean episode log.
-    """
-    env = gymnasium.make(settings["env_id"])
+def make_env(settings: dict, overrides: dict, seed: int, monitor_path: Path):
     env_config = dict(settings.get("env_config", {}))
     env_config.update(overrides)
-    env.unwrapped.configure(env_config)
-    env = Monitor(env, filename=str(monitor_path) if monitor_path else None)
+    env = gymnasium.make(settings["env_id"], config=env_config)
+    env = Monitor(env, filename=str(monitor_path))
     env.reset(seed=seed)
     return env
 
 
 def package_versions() -> dict:
-    """Record library versions so a run can be reproduced or explained later."""
     versions = {}
     for package in ("gymnasium", "highway-env", "stable-baselines3", "torch"):
         try:
@@ -94,10 +79,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", required=True, help="Name from configs/rewards.yaml")
     parser.add_argument("--seed", type=int, required=True)
-    parser.add_argument(
-        "--steps", type=int, default=None,
-        help="Override the frozen step budget (smoke tests only)",
-    )
+    parser.add_argument("--steps", type=int, default=None, help="Override the step budget (smoke tests only)")
     args = parser.parse_args()
 
     settings, overrides = load_settings(args.config)
@@ -110,14 +92,9 @@ def main() -> None:
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     set_random_seed(args.seed)
-    env = make_env(settings, overrides, args.seed, monitor_path=log_dir / "monitor")
+    env = make_env(settings, overrides, args.seed, log_dir / "monitor")
 
-    model = DQN(
-        env=env,
-        seed=args.seed,
-        tensorboard_log=str(log_dir),
-        **HYPERPARAMS,
-    )
+    model = DQN(env=env, seed=args.seed, tensorboard_log=str(log_dir), **HYPERPARAMS)
 
     checkpoint = CheckpointCallback(
         save_freq=max(total_steps // 5, 1),
@@ -127,8 +104,7 @@ def main() -> None:
 
     print(f"[{run_name}] {total_steps:,} steps on {settings['env_id']} with {overrides}")
 
-    # The progress bar is only useful on a terminal. Piping through tee during
-    # overnight runs turns it off automatically, which keeps the logs readable.
+    # The progress bar is noise when stdout is piped to a log file.
     model.learn(
         total_timesteps=total_steps,
         callback=checkpoint,
@@ -145,9 +121,7 @@ def main() -> None:
         "total_steps": total_steps,
         "is_smoke_test": args.steps is not None,
         "env_overrides": overrides,
-        "hyperparameters": {
-            k: v for k, v in HYPERPARAMS.items() if k != "policy_kwargs"
-        },
+        "hyperparameters": {k: v for k, v in HYPERPARAMS.items() if k != "policy_kwargs"},
         "net_arch": HYPERPARAMS["policy_kwargs"]["net_arch"],
         "finished_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "python": sys.version.split()[0],

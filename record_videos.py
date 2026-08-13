@@ -47,7 +47,7 @@ def main() -> None:
             done = terminated or truncated
     env.close()
 
-
+    print(f"[{run_name}]: {args.episodes} videos finished rendering.")
 
 if __name__ == "__main__":
     main()

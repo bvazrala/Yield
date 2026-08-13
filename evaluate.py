@@ -41,22 +41,23 @@ FIELDS = [
 EVAL_SEED_BASE = 10_000
 
 
-def append_row(row: dict) -> None:
+def append_row(row: dict[str, Any]) -> None:
     """Append one result row, creating the CSV and header when necessary."""
     RESULTS_FILE.parent.mkdir(parents=True, exist_ok=True)
     new_file = not RESULTS_FILE.exists() or RESULTS_FILE.stat().st_size == 0
-    with open(RESULTS_FILE, "a", newline="", encoding="utf-8") as f:
+    with RESULTS_FILE.open("a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDS)
         if new_file:
             writer.writeheader()
         writer.writerow(row)
 
 def following_distance(env) -> float | None:
-    """Return the current bumper-to-bumper gap to the nearest car ahead.
-    Only a front vehicle in the ego vehicle's current lane is considered.
-    ``lane_distance_to`` measures center-to-center longitudinal distance, so
-    half of both vehicle lengths is removed to obtain the physical gap.
-    ``None`` means there is currently no vehicle ahead in that lane.
+    """Return the bumper-to-bumper gap to the nearest vehicle ahead.
+
+    Only the nearest front vehicle in the ego vehicle's current lane is used.
+    ``lane_distance_to`` is center-to-center longitudinal distance, so half of
+    both vehicle lengths is subtracted to obtain the physical following gap.
+    ``None`` means there is no vehicle ahead in the current lane.
     """
     base_env = env.unwrapped
     ego_vehicle = base_env.vehicle
@@ -75,6 +76,7 @@ def following_distance(env) -> float | None:
 
 def evaluate_agent(model: DQN, env, episodes: int) -> dict[str, float]:
     """Run deterministic held-out rollouts and return aggregate metrics.
+
     Speed and following distance are averaged within each episode first and
     then across episodes. This keeps long non-collision episodes from receiving
     more weight solely because they contain more simulator steps.
@@ -88,6 +90,7 @@ def evaluate_agent(model: DQN, env, episodes: int) -> dict[str, float]:
 
     for episode in trange(episodes, desc="Evaluating", unit="episode"):
         observation, _ = env.reset(seed=EVAL_SEED_BASE + episode)
+        ego_vehicle = env.unwrapped.vehicle
         previous_lane_index = env.unwrapped.vehicle.lane_index
 
         episode_return = 0.0
@@ -124,6 +127,7 @@ def evaluate_agent(model: DQN, env, episodes: int) -> dict[str, float]:
         returns.append(episode_return)
         lengths.append(float(episode_length))
         lane_changes.append(float(episode_lane_changes))
+
         if distance_samples:
             average_following_distances.append(fmean(distance_samples))
 
@@ -146,8 +150,8 @@ def main() -> None:
         "--config",
         required=True,
         help="Reward configuration name from configs/rewards.yaml",
-        )
-    parser.add_argument("--seed", type=int, required=True), help="Training seed"
+    )
+    parser.add_argument("--seed", type=int, required=True, help="Training seed")
     parser.add_argument(
         "--episodes",
         type=int,
@@ -156,7 +160,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    settings, rewards = load_settings(args.config)
+    settings, overrides = load_settings(args.config)
     episodes = (
         int(settings["eval_episodes"])
         if args.episodes is None
@@ -174,7 +178,15 @@ def main() -> None:
             f"--seed {args.seed}"
         )
 
-    env = make_env(settings, rewards)
+    eval_log_dir = ROOT / "logs" / "evaluation" / run_name
+    eval_log_dir.mkdir(parents=True, exist_ok=True)
+    env = make_env(
+        settings,
+        overrides,
+        seed=EVAL_SEED_BASE,
+        monitor_path=eval_log_dir / "monitor",
+    )
+
     try:
         model = DQN.load(model_path, env=env)
         metrics = evaluate_agent(model, env, episodes)

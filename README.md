@@ -10,6 +10,12 @@ CS 175: Project in AI, Summer 2026, Group 7.
 | Christopher James Cho | cjcho2 |
 | Harrison Nguyen Xuan Hiep Le | harrisnl |
 
+### Aggressive agent (collision penalty 0.2)
+![Aggressive agent](results/speed_heavy_seed0-episode-0.gif)
+
+### Cautious agent (collision penalty 10)
+![Cautious agent](results/safety_heavy_seed0-episode-0.gif)
+
 ## Overview
 
 We train DQN agents in the highway-env simulator where the only difference between agents is how heavily the reward penalizes collisions relative to rewarding speed. Five reward configurations, three random seeds each, and a frozen budget of 50,000 training steps per run. The headline result is a tradeoff curve of average speed against collision rate. Full details are in [docs/CS175_Project_Proposal.pdf](docs/CS175_Project_Proposal.pdf).
